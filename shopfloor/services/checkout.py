@@ -1558,7 +1558,14 @@ class Checkout(Component):
                 picking,
             )
         stock = self._actions_for("stock")
-        stock.validate_moves(lines_done.move_id)
+        try:
+            stock.validate_moves(lines_done.move_id)
+        except Exception as e:
+            return self._response_for_summary(
+                picking,
+                need_confirm=False,
+                message=self.msg_store.move_validation_failed(e),
+            )
         return self._response_for_select_document(
             message=self.msg_store.transfer_done_success(lines_done.picking_id)
         )
@@ -1596,7 +1603,13 @@ class Checkout(Component):
         for line in lines_done:
             line.update({"location_dest_id": scanned_location.id})
         stock = self._actions_for("stock")
-        stock.validate_moves(lines_done.move_id)
+        try:
+            stock.validate_moves(lines_done.move_id)
+        except Exception as e:
+            return self._response_for_select_child_location(
+                picking,
+                message=self.msg_store.move_validation_failed(e),
+            )
         return self._response_for_select_document(
             message=self.msg_store.transfer_done_success(lines_done.picking_id)
         )
