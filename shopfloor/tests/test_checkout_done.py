@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 from werkzeug.exceptions import BadRequest
 
+from odoo.tools import mute_logger
+
 from odoo.addons.shopfloor.actions.stock import StockAction
 
 from .test_checkout_base import CheckoutCommonCase
@@ -31,6 +33,7 @@ class CheckoutDoneCase(CheckoutCommonCase):
             data={"restrict_scan_first": False},
         )
 
+    @mute_logger("odoo.addons.shopfloor.services.checkout")
     def test_done_validation_error(self):
         picking = self._create_picking(lines=[(self.product_a, 10)])
         self._fill_stock_for_moves(picking.move_ids, in_package=True)
@@ -43,22 +46,17 @@ class CheckoutDoneCase(CheckoutCommonCase):
         with patch.object(
             StockAction, "validate_moves", side_effect=BadRequest(validation_error_msg)
         ):
-            # mock logging to avoid error logs in test output
-            with patch("logging.Logger.error") as _:
-                response = self.service.dispatch(
-                    "done",
-                    params={"picking_id": picking.id}
-                )
-                self.assert_response(
-                    response,
-                    next_state="summary",
-                    message={
-                        "message_type": "error",
-                        "body": f"\
+            response = self.service.dispatch("done", params={"picking_id": picking.id})
+            self.assert_response(
+                response,
+                next_state="summary",
+                message={
+                    "message_type": "error",
+                    "body": f"\
 Move validation failed. Message: 400 Bad Request: {validation_error_msg}",
-                    },
-                    data=self.ANY,
-                )
+                },
+                data=self.ANY,
+            )
 
 
 class CheckoutDonePartialCase(CheckoutCommonCase):
