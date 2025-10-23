@@ -4,6 +4,9 @@
 # pylint: disable=missing-return
 
 from .test_checkout_base import CheckoutCommonCase
+from unittest.mock import patch
+from werkzeug.exceptions import BadRequest
+from odoo.addons.shopfloor.actions.stock import StockAction
 
 
 class CheckoutSelectChildLocationCase(CheckoutCommonCase):
@@ -97,3 +100,27 @@ class CheckoutSelectChildLocationCase(CheckoutCommonCase):
             },
             message=self.service.msg_store.dest_location_not_allowed(),
         )
+
+    def test_scan_dest_location_validation_error(self):
+        validation_error_msg = "Validation error"
+        with patch.object(
+            StockAction,
+            "validate_moves",
+            side_effect=BadRequest(validation_error_msg),
+        ):
+            response = self.service.dispatch(
+                "scan_dest_location",
+                params={
+                    "picking_id": self.picking.id,
+                    "barcode": self.child_location.name,
+                },
+            )
+            self.assert_response(
+                response,
+                next_state="select_child_location",
+                message={
+                    "message_type": "error",
+                    "body": f"Move validation failed. Message: 400 Bad Request: {validation_error_msg}",
+                },
+                data=self.ANY
+            )
