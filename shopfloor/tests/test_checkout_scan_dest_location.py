@@ -111,20 +111,22 @@ class CheckoutSelectChildLocationCase(CheckoutCommonCase):
             "validate_moves",
             side_effect=BadRequest(validation_error_msg),
         ):
-            response = self.service.dispatch(
-                "scan_dest_location",
-                params={
-                    "picking_id": self.picking.id,
-                    "barcode": self.child_location.name,
-                },
-            )
-            self.assert_response(
-                response,
-                next_state="select_child_location",
-                message={
-                    "message_type": "error",
-                    "body": f"\
+            # mock logging to avoid error logs in test output
+            with patch("logging.Logger.error") as _:
+                response = self.service.dispatch(
+                    "scan_dest_location",
+                    params={
+                        "picking_id": self.picking.id,
+                        "barcode": self.child_location.name,
+                    },
+                )
+                self.assert_response(
+                    response,
+                    next_state="select_child_location",
+                    message={
+                        "message_type": "error",
+                        "body": f"\
 Move validation failed. Message: 400 Bad Request: {validation_error_msg}",
-                },
-                data=self.ANY,
-            )
+                    },
+                    data=self.ANY,
+                )

@@ -43,17 +43,22 @@ class CheckoutDoneCase(CheckoutCommonCase):
         with patch.object(
             StockAction, "validate_moves", side_effect=BadRequest(validation_error_msg)
         ):
-            response = self.service.dispatch("done", params={"picking_id": picking.id})
-            self.assert_response(
-                response,
-                next_state="summary",
-                message={
-                    "message_type": "error",
-                    "body": f"\
+            # mock logging to avoid error logs in test output
+            with patch("logging.Logger.error") as _:
+                response = self.service.dispatch(
+                    "done",
+                    params={"picking_id": picking.id}
+                )
+                self.assert_response(
+                    response,
+                    next_state="summary",
+                    message={
+                        "message_type": "error",
+                        "body": f"\
 Move validation failed. Message: 400 Bad Request: {validation_error_msg}",
-                },
-                data=self.ANY,
-            )
+                    },
+                    data=self.ANY,
+                )
 
 
 class CheckoutDonePartialCase(CheckoutCommonCase):
